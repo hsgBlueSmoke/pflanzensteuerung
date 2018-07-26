@@ -49,6 +49,12 @@
 #define OLED_RESET 0  // GPIO0
 Adafruit_SSD1306 OLED(OLED_RESET);
 
+/******************************WLAN***************************************/
+
+WiFiClientSecure client;
+const char *ssid = "Meins";
+const char *password = "BlueSmoke85";
+
 /****************************** Bodenfeuchtesensor Kalibrierung ***************************************/
 
 const int Luftwert = 813;   //getesteter Wert bei Luft
@@ -76,8 +82,6 @@ NTPClient timeClient(ntpUDP, NTP_Adresse);
 
 /****************************** Funktionen ***************************************/
 
-WiFiClientSecure client;
-
 // Store the MQTT server, client ID, username, and password in flash memory.
 // This is required for using the Adafruit MQTT library.
 const char MQTT_SERVER[] PROGMEM    = AIO_SERVER;
@@ -102,7 +106,10 @@ Adafruit_MQTT_Publish DruckStream = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/
 Adafruit_MQTT_Publish LuxStream = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/testumgebung.lux");
 //Adafruit_MQTT_Subscribe LampenStream = Adafruit_MQTT_Subscribe(&mqtt, Adafruit_Sub);
 
-/****************************** Eingänge***************************************/
+/****************************** Eingänge/Ausgänge***************************************/
+
+const int AdresseI2C1 = D1;
+const int AdresseI2C2 = D2;
 
 const int AnalogAdresse = A0;
 const int AdresseWasser = D0;
@@ -110,6 +117,8 @@ const int AdresseLicht = D5;
 const int AdresseWind = D6;
 const int AdresseAbluft = D7;
 const int AdresseNebel = D8;
+
+const int AdresseTaster = 9;
 
 //Ausgänge; HIGH = AUS
 
@@ -119,11 +128,9 @@ bool A_Licht = HIGH;
 bool A_Abluft = HIGH;
 bool A_Nebel = HIGH;
 
-/****************************** Konstanten***************************************/
-
-const char *ssid = "Meins";
-const char *password = "BlueSmoke85";
-
+bool Grow = HIGH;
+bool TasterMerker = LOW;
+bool Taster = LOW;
 
 /****************************** Variablen***************************************/
 
@@ -171,7 +178,7 @@ void setup() {
     Serial.println();
     Serial.println("******************************");
 
-    Wire.begin(D1, D2); //Benutzte GPIOs I2C für I2C
+    Wire.begin(AdresseI2C1, AdresseI2C2); //Benutzte GPIOs I2C für I2C
     Wire.setClock(100000);
 
     bool status;
@@ -266,7 +273,7 @@ void setup() {
     pinMode(AdresseAbluft, OUTPUT);
     pinMode(AdresseNebel, OUTPUT);
 
-    pinMode(D3, INPUT);
+    pinMode(AdresseTaster, INPUT);
 
     digitalWrite(AdresseWasser, A_Wasser);
     digitalWrite(AdresseWind, A_Wind);
@@ -562,12 +569,10 @@ void Programm() {
 
   if (BodenfeuchteBerechnet >= 0 && BodenfeuchteBerechnet < 70) {
     A_Wasser = LOW;
-    A_Abluft = LOW;
     WasserPrint = " AN ";
   }
   else {
     A_Wasser = HIGH;
-    A_Abluft = HIGH;
     WasserPrint = " AUS ";
   }
 
@@ -611,8 +616,20 @@ void Programm() {
   }
   if(Luftfeuchtigkeit <= 65 && millis() - VergangeneAbluftZeitAus > AbluftintervalAus) {
     VergangeneNebelZeitAus = millis();
-    A_Nebel = LOW;
+    A_Nebel = HIGH;
   }
+
+/******************************Taster Grow***************************************/
+
+  Taster = digitalRead(AdresseTaster);
+  if (Taster == HIGH && TasterMerker == LOW) {
+    if (Grow == HIGH)
+      Grow = LOW;
+    else
+      Grow = HIGH;
+  }
+  TasterMerker = Taster;
+
 }
 
 void Ausgaenge() {
@@ -648,12 +665,12 @@ void Display() {
     */
     if (A_Wind = HIGH) {
       OLED.print("Wind in ");
-      OLED.print((WindintervalAn - (VergangeneWindZeitAn - millis())) * 0.001);
+      OLED.print((WindintervalAn - (millis() - VergangeneWindZeitAn)) * 0.001);
       OLED.println(" sek");
     }
     if (A_Wind = LOW) {
       OLED.print("Wind noch ");
-      OLED.print((WindintervalAus - (VergangeneWindZeitAus - millis())) * 0.001);
+      OLED.print((WindintervalAus - (millis() - VergangeneWindZeitAus)) * 0.001);
       OLED.println(" sek");
     }
     OLED.print("Boden: ");
@@ -674,5 +691,5 @@ void Display() {
 
 
     OLED.display(); //output 'display buffer' to screen
-    //OLED.startscrollleft(0x00, 0x0F); //make display scroll
+    OLED.startscrollleft(0x00, 0x05); //make display scroll
 }
