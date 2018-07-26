@@ -168,6 +168,8 @@ unsigned long VergangeneAbluftZeitAus = 0;
 unsigned long AbluftintervalAn = 10000;    //10 sek. an
 unsigned long AbluftintervalAus = 300000;   //5 min. warten
 
+String LichtZeit = "18:00:00";
+
 /******************************Setup***************************************/
 
 void setup() {
@@ -578,10 +580,17 @@ void Programm() {
 
 /******************************Licht***************************************/
 
+  if (Grow == HIGH) {         //Wenn Pflanze im Grow Stadium dann 8h Licht
+    LichtZeit = "18:00:00";
+  }
+  else {
+    LichtZeit = "20:00:00";     //Wenn Pflanze im Ernte Stadium dann 10h Licht
+  }
+
   if (timeClient.getFormattedTime() == "10:00:00") {
     A_Licht = LOW;
   }
-  if (timeClient.getFormattedTime() == "18:00:00") {
+  if (timeClient.getFormattedTime() == LichtZeit) {
     A_Licht = HIGH;
   }
 
