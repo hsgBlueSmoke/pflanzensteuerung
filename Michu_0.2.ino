@@ -46,7 +46,7 @@
 //Für Höhenberechnung mit Druck
 #define SEALEVELPRESSURE_HPA (1013.25)
 //OLed Bildschirm
-#define OLED_RESET 0  // GPIO0
+#define OLED_RESET 2  // GPIO0
 Adafruit_SSD1306 OLED(OLED_RESET);
 
 /******************************WLAN***************************************/
@@ -659,19 +659,21 @@ void Display() {
     //OLED.setTextColor(WHITE);
     OLED.setCursor(0,0);
 
-    OLED.print("Temperatur: ");
+    //OLED.print("Temperatur: ");
     OLED.print(Temperatur);
-    OLED.print(" Grad; ");
-    OLED.print("Druck: ");
+    OLED.print(" ");
+    //OLED.print("Druck: ");
     OLED.print(Druck);
-    OLED.print(" hPa; ");
-    OLED.print("Luftfeuchtigkeit:");
-    OLED.print(Luftfeuchtigkeit);
-    OLED.println("%");
+    OLED.print(" ");
+    //OLED.print("Luftfeuchtigkeit:");
+    OLED.println(Luftfeuchtigkeit);
+    //OLED.print("");
+    //OLED.startscrollleft(0x00, 0x0F); //make display scroll
     /*OLED.print("Helligkeit: ");
     OLED.print(helligkeit);
     OLED.print(" lx");
     */
+    //OLED.setCursor(0,10);
     if (A_Wind = HIGH) {
       OLED.print("Wind in ");
       OLED.print((WindintervalAn - (millis() - VergangeneWindZeitAn)) * 0.001);
@@ -700,5 +702,6 @@ void Display() {
 
 
     OLED.display(); //output 'display buffer' to screen
-    OLED.startscrollleft(0x00, 0x05); //make display scroll
+    //OLED.startscrollleft(0x00, 0x0F); //make display scroll
+    //OLED.stopscroll();
 }
