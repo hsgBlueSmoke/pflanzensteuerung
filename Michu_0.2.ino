@@ -132,6 +132,8 @@ bool Grow = HIGH;
 bool TasterMerker = LOW;
 bool Taster = LOW;
 
+bool Lichtfehler = false;
+
 /****************************** Variablen***************************************/
 
 int Temperatur = 0;
@@ -155,18 +157,18 @@ unsigned long interval = 60000;
 
 unsigned long VergangeneWindZeitAn = 0;
 unsigned long VergangeneWindZeitAus = 0;
-unsigned long WindintervalAn = 600000;      //10min. an
-unsigned long WindintervalAus = 900000;     //15min. warten
+unsigned long WindintervalAn = 60000;      //10min. an 600000
+unsigned long WindintervalAus = 90000;     //15min. warten 900000
 
 unsigned long VergangeneNebelZeitAn = 0;
 unsigned long VergangeneNebelZeitAus = 0;
-unsigned long NebelintervalAn = 5000;       //5 sek. an
-unsigned long NebelintervalAus = 300000;    //5 min. warten
+unsigned long NebelintervalAn = 10000;       //5 sek. an
+unsigned long NebelintervalAus = 10000;    //5 min. warten 300000
 
 unsigned long VergangeneAbluftZeitAn = 0;
 unsigned long VergangeneAbluftZeitAus = 0;
-unsigned long AbluftintervalAn = 10000;    //10 sek. an
-unsigned long AbluftintervalAus = 300000;   //5 min. warten
+unsigned long AbluftintervalAn = 10000;    //10 sek. an 10000
+unsigned long AbluftintervalAus = 100000;   //5 min. warten 300000
 
 String LichtZeit = "18:00:00";
 
@@ -593,6 +595,9 @@ void Programm() {
   if (timeClient.getFormattedTime() == LichtZeit) {
     A_Licht = HIGH;
   }
+  if (A_Licht == LOW && helligkeit < 100) {
+    Lichtfehler = true;
+  }
 
 /******************************Windsimulation***************************************/
 
@@ -619,7 +624,7 @@ void Programm() {
 
 /******************************Abluft***************************************/
 
-  if(Luftfeuchtigkeit >= 75 && millis() - VergangeneAbluftZeitAn > AbluftintervalAn) {
+  if(Luftfeuchtigkeit >= 75 && (millis() - VergangeneAbluftZeitAn) > AbluftintervalAn) {
     VergangeneAbluftZeitAn = millis();
     A_Abluft = LOW;
   }
@@ -659,14 +664,17 @@ void Display() {
     //OLED.setTextColor(WHITE);
     OLED.setCursor(0,0);
 
-    //OLED.print("Temperatur: ");
+    OLED.print("T:");
     OLED.print(Temperatur);
     OLED.print(" ");
-    //OLED.print("Druck: ");
+    OLED.print("D:");
     OLED.print(Druck);
     OLED.print(" ");
-    //OLED.print("Luftfeuchtigkeit:");
+    OLED.print("L:");
     OLED.println(Luftfeuchtigkeit);
+    OLED.print("B:");
+    OLED.print(BodenfeuchteBerechnet);
+    //OLED.println(" %");
     //OLED.print("");
     //OLED.startscrollleft(0x00, 0x0F); //make display scroll
     /*OLED.print("Helligkeit: ");
@@ -684,12 +692,18 @@ void Display() {
       OLED.print((WindintervalAus - (millis() - VergangeneWindZeitAus)) * 0.001);
       OLED.println(" sek");
     }
-    OLED.print("Boden: ");
-    OLED.print(BodenfeuchteBerechnet);
-    OLED.println(" %");
-
-
-
+    if (A_Nebel = HIGH) {
+      OLED.println("Nebel AUS");
+    }
+    else {
+      OLED.println("Nebel AN");
+    }
+    if (A_Abluft = HIGH) {
+      OLED.print("Abluft AUS");
+    }
+    else {
+      OLED.print("Abluft AN");
+    }
 
     /*if(mqtt.connected()) {
       OLED.print("Verbindungsstatus: verbunden");
