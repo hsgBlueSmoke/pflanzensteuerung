@@ -104,6 +104,8 @@ Adafruit_MQTT_Publish TemperaturStream = Adafruit_MQTT_Publish(&mqtt, AIO_USERNA
 Adafruit_MQTT_Publish LuftfeuchtigkeitStream = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/testumgebung.luftfeuchtigkeit");
 Adafruit_MQTT_Publish DruckStream = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/testumgebung.druck");
 Adafruit_MQTT_Publish LuxStream = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/testumgebung.lux");
+Adafruit_MQTT_Publish LichtfehlerStream = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/testumgebung.lichtfehler");
+Adafruit_MQTT_Publish GrowStream = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/testumgebung.grow");
 //Adafruit_MQTT_Subscribe LampenStream = Adafruit_MQTT_Subscribe(&mqtt, Adafruit_Sub);
 
 /****************************** Eingänge/Ausgänge***************************************/
@@ -118,7 +120,7 @@ const int AdresseWind = D6;
 const int AdresseAbluft = D7;
 const int AdresseNebel = D8;
 
-const int AdresseTaster = 9;
+const int AdresseTaster = D3;
 
 //Ausgänge; HIGH = AUS
 
@@ -155,10 +157,8 @@ const int setTimeOffset = 5000L;
 unsigned long previousMillis = 0;
 unsigned long interval = 60000;
 
-unsigned long VergangeneWindZeitAn = 0;
-unsigned long VergangeneWindZeitAus = 0;
-unsigned long WindintervalAn = 60000;      //10min. an 600000
-unsigned long WindintervalAus = 90000;     //15min. warten 900000
+unsigned long VergangeneWindZeit = 0;
+unsigned long Windinterval = 90000;      //10min. an 600000
 
 unsigned long VergangeneNebelZeitAn = 0;
 unsigned long VergangeneNebelZeitAus = 0;
@@ -170,7 +170,10 @@ unsigned long VergangeneAbluftZeitAus = 0;
 unsigned long AbluftintervalAn = 10000;    //10 sek. an 10000
 unsigned long AbluftintervalAus = 100000;   //5 min. warten 300000
 
-String LichtZeit = "18:00:00";
+int LichtZeit = 0;
+int LichtStart = 0;
+int ntpStunden = 0;
+String PflanzenPhase = "Grow";
 
 /******************************Setup***************************************/
 
@@ -285,7 +288,7 @@ void setup() {
     digitalWrite(AdresseAbluft, A_Abluft);
     digitalWrite(AdresseNebel, A_Nebel);
 
-    delay(3000);
+    delay(50);
 
     OLED.clearDisplay();
 
@@ -378,6 +381,7 @@ void Empfange() {
 void Zeit() {
 
   timeClient.update();
+  ntpStunden = timeClient.getHours();
 
 }
 
@@ -472,6 +476,20 @@ void Sende() {
     Serial.print(F(" Lux gesendet: "));
     Serial.println(helligkeit);
 
+  if (! LichtfehlerStream.publish(Lichtfehler))
+    Serial.println(F(" Failed to publish Lichtfehler"));
+  else
+    Serial.print(timeClient.getFullFormattedTime());
+    Serial.print(F(" Lichtfehler: "));
+    Serial.println(Lichtfehler);
+
+  if (! GrowStream.publish(Grow))
+    Serial.println(F(" Failed to publish Lichtfehler"));
+  else
+    Serial.print(timeClient.getFullFormattedTime());
+    Serial.print(F(" GrowStatus: "));
+    Serial.println(Grow);
+    
     }
 
 
@@ -583,40 +601,48 @@ void Programm() {
 /******************************Licht***************************************/
 
   if (Grow == HIGH) {         //Wenn Pflanze im Grow Stadium dann 8h Licht
-    LichtZeit = "18:00:00";
+    LichtZeit = 18;
+    LichtStart = 5;
+    PflanzenPhase = "Grow";
   }
   else {
-    LichtZeit = "20:00:00";     //Wenn Pflanze im Ernte Stadium dann 10h Licht
+    LichtZeit = 4;     //Wenn Pflanze im Ernte Stadium dann 10h Licht
+    LichtStart = 10;
+    PflanzenPhase = "Bloom";
   }
 
-  if (timeClient.getFormattedTime() == "10:00:00") {
+  if (ntpStunden >= LichtStart) {
     A_Licht = LOW;
   }
-  if (timeClient.getFormattedTime() == LichtZeit) {
+  if (ntpStunden >= LichtStart + LichtZeit) {
     A_Licht = HIGH;
   }
   if (A_Licht == LOW && helligkeit < 100) {
     Lichtfehler = true;
   }
-
+  else {
+  Lichtfehler = false;
+  }
 /******************************Windsimulation***************************************/
 
-  if(millis() - VergangeneWindZeitAn > WindintervalAn) {
-    VergangeneWindZeitAn = millis();
-    A_Wind = LOW;
+  if (millis() - VergangeneWindZeit > Windinterval) {
+    VergangeneWindZeit = millis();
+    if (A_Wind == HIGH)
+      A_Wind = LOW;
+    else
+      A_Wind = HIGH; 
   }
-
-  if(millis() - VergangeneWindZeitAus > WindintervalAus) {
-    VergangeneWindZeitAus = millis();
-    A_Wind = HIGH;
-  }
-
+  
 /******************************Nebel***************************************/
 
   if(Luftfeuchtigkeit <= 50 && millis() - VergangeneNebelZeitAn > NebelintervalAn) {
     VergangeneNebelZeitAn = millis();
     A_Nebel = LOW;
   }
+  else {
+    A_Nebel = HIGH;
+  }
+  
   if(Luftfeuchtigkeit >= 60 && millis() - VergangeneNebelZeitAus > NebelintervalAus) {
     VergangeneNebelZeitAus = millis();
     A_Nebel = HIGH;
@@ -624,11 +650,11 @@ void Programm() {
 
 /******************************Abluft***************************************/
 
-  if(Luftfeuchtigkeit >= 75 && (millis() - VergangeneAbluftZeitAn) > AbluftintervalAn) {
+  if(Luftfeuchtigkeit >= 65 && (millis() - VergangeneAbluftZeitAn) > AbluftintervalAn) {
     VergangeneAbluftZeitAn = millis();
     A_Abluft = LOW;
   }
-  if(Luftfeuchtigkeit <= 65 && millis() - VergangeneAbluftZeitAus > AbluftintervalAus) {
+  if(Luftfeuchtigkeit <= 55 && millis() - VergangeneAbluftZeitAus > AbluftintervalAus) {
     VergangeneNebelZeitAus = millis();
     A_Nebel = HIGH;
   }
@@ -671,9 +697,22 @@ void Display() {
     OLED.print(Druck);
     OLED.print(" ");
     OLED.print("L:");
-    OLED.println(Luftfeuchtigkeit);
+    OLED.print(Luftfeuchtigkeit);
+    if (Lichtfehler == true) {
+      OLED.print(" F");
+    }
+    else {
+      OLED.print(" N");
+    }
+    if (Grow == HIGH) {
+      OLED.println(" G");
+    }
+    else {
+      OLED.println(" E");
+    }
     OLED.print("B:");
     OLED.print(BodenfeuchteBerechnet);
+
     //OLED.println(" %");
     //OLED.print("");
     //OLED.startscrollleft(0x00, 0x0F); //make display scroll
@@ -682,27 +721,39 @@ void Display() {
     OLED.print(" lx");
     */
     //OLED.setCursor(0,10);
-    if (A_Wind = HIGH) {
-      OLED.print("Wind in ");
-      OLED.print((WindintervalAn - (millis() - VergangeneWindZeitAn)) * 0.001);
+    if (A_Wind == HIGH) {
+      OLED.print(" Wind in ");
+      OLED.print((Windinterval - (millis() - VergangeneWindZeit)) * 0.001);
       OLED.println(" sek");
     }
-    if (A_Wind = LOW) {
+    if (A_Wind == LOW) {
       OLED.print("Wind noch ");
-      OLED.print((WindintervalAus - (millis() - VergangeneWindZeitAus)) * 0.001);
+      OLED.print((Windinterval - (millis() - VergangeneWindZeit)) * 0.001);
       OLED.println(" sek");
     }
-    if (A_Nebel = HIGH) {
-      OLED.println("Nebel AUS");
+    if (A_Nebel == HIGH) {
+      OLED.print("Nebel AUS");
     }
     else {
-      OLED.println("Nebel AN");
+      OLED.print("Nebel AN");
     }
-    if (A_Abluft = HIGH) {
-      OLED.print("Abluft AUS");
+    if (A_Abluft == HIGH) {
+      OLED.println(" Abluft AUS");
     }
     else {
-      OLED.print("Abluft AN");
+      OLED.println(" Abluft AN");
+    }
+    if (A_Wind == HIGH) {
+      OLED.print("Wind AUS");
+    }
+    else {
+      OLED.print("Wind AN");
+    }
+    if (A_Licht == HIGH) {
+      OLED.println(" Licht AUS");
+    }
+    else {
+      OLED.println(" Licht AN");
     }
 
     /*if(mqtt.connected()) {
