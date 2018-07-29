@@ -160,15 +160,14 @@ unsigned long interval = 60000;
 unsigned long VergangeneWindZeit = 0;
 unsigned long Windinterval = 90000;      //10min. an 600000
 
-unsigned long VergangeneNebelZeitAn = 0;
-unsigned long VergangeneNebelZeitAus = 0;
-unsigned long NebelintervalAn = 10000;       //5 sek. an
-unsigned long NebelintervalAus = 10000;    //5 min. warten 300000
+unsigned long VergangeneNebelZeit = 0;
+unsigned long NebelintervalAn = 20000;       //5 sek. an
+unsigned long NebelintervalAus = 20000;    //5 min. warten 300000
 
-unsigned long VergangeneAbluftZeitAn = 0;
-unsigned long VergangeneAbluftZeitAus = 0;
+unsigned long VergangeneAbluftZeit = 0;
+//unsigned long VergangeneAbluftZeitAus = 0;
 unsigned long AbluftintervalAn = 10000;    //10 sek. an 10000
-unsigned long AbluftintervalAus = 100000;   //5 min. warten 300000
+unsigned long AbluftintervalAus = 10000;   //5 min. warten 300000
 
 int LichtZeit = 0;
 int LichtStart = 0;
@@ -181,7 +180,7 @@ void setup() {
 
     Serial.begin(115200);
     delay(5000);
-    Serial.println(F("Pflanzensteuerung 0.1"));
+    Serial.println(F("Pflanzensteuerung"));
     Serial.println();
     Serial.println("******************************");
 
@@ -198,7 +197,7 @@ void setup() {
     OLED.setTextColor(WHITE);
     OLED.setCursor(0,0);
 
-    OLED.println("Pflanzensteuerung 0.2");
+    OLED.println("Pflanzensteuerung 1.0");
     OLED.display();
 
 
@@ -484,12 +483,12 @@ void Sende() {
     Serial.println(Lichtfehler);
 
   if (! GrowStream.publish(Grow))
-    Serial.println(F(" Failed to publish Lichtfehler"));
+    Serial.println(F(" Failed to publish GrowStatus"));
   else
     Serial.print(timeClient.getFullFormattedTime());
     Serial.print(F(" GrowStatus: "));
     Serial.println(Grow);
-    
+
     }
 
 
@@ -507,6 +506,9 @@ void connect() {
   //OLED.display();
   */
   Serial.print(F("Connecting to Adafruit IO... "));
+  OLED.clearDisplay();
+  OLED.println("Verbinde zu Cloud");
+  OLED.display();
 
   int8_t ret;
 
@@ -526,16 +528,16 @@ void connect() {
       mqtt.disconnect();
 
     Serial.println(F("Retrying connection..."));
-    //OLED.clearDisplay();
-    //OLED.println("erneuter Versuch");
-    //OLED.display();
+    OLED.clearDisplay();
+    OLED.println("Verbinde erneut");
+    OLED.display();
 
   }
 
   Serial.println(F("Adafruit IO Connected!"));
-  //OLED.clearDisplay();
-  //OLED.println("Verbindung erfolgreich");
-  //OLED.display();
+  OLED.clearDisplay();
+  OLED.println("Verbindung erfolgreich");
+  OLED.display();
 
 }
 
@@ -582,14 +584,14 @@ void Programm() {
 /******************************Bodenfeuchte Ausgang (Wasserpumpe)***************************************/
 
   BodenfeuchteBerechnet = ((Bodenfeuchte - Luftwert) / (-3.66)); //Berechneter Wert in %
-  if (BodenfeuchteBerechnet > 100){
+  if (BodenfeuchteBerechnet > 100){   //max Wert 100
       BodenfeuchteBerechnet = 100;
   }
-  if (BodenfeuchteBerechnet <= 0) {
+  if (BodenfeuchteBerechnet <= 0) {   //min Wert 0
       BodenfeuchteBerechnet = 0;
     }
 
-  if (BodenfeuchteBerechnet >= 0 && BodenfeuchteBerechnet < 70) {
+  if (BodenfeuchteBerechnet >= 0 && BodenfeuchteBerechnet <= 60) { //
     A_Wasser = LOW;
     WasserPrint = " AN ";
   }
@@ -630,32 +632,29 @@ void Programm() {
     if (A_Wind == HIGH)
       A_Wind = LOW;
     else
-      A_Wind = HIGH; 
+      A_Wind = HIGH;
   }
-  
+
 /******************************Nebel***************************************/
 
-  if(Luftfeuchtigkeit <= 50 && millis() - VergangeneNebelZeitAn > NebelintervalAn) {
-    VergangeneNebelZeitAn = millis();
+  if (A_Nebel == HIGH && Luftfeuchtigkeit <= 50 && (millis() - VergangeneNebelZeit) > NebelintervalAn) {
+    VergangeneNebelZeit = millis();
     A_Nebel = LOW;
   }
-  else {
-    A_Nebel = HIGH;
-  }
-  
-  if(Luftfeuchtigkeit >= 60 && millis() - VergangeneNebelZeitAus > NebelintervalAus) {
-    VergangeneNebelZeitAus = millis();
+
+  else if (A_Nebel == LOW && Luftfeuchtigkeit >= 60 && (millis() - VergangeneNebelZeit) > NebelintervalAus) {
+    VergangeneNebelZeit = millis();
     A_Nebel = HIGH;
   }
 
 /******************************Abluft***************************************/
 
-  if(Luftfeuchtigkeit >= 65 && (millis() - VergangeneAbluftZeitAn) > AbluftintervalAn) {
-    VergangeneAbluftZeitAn = millis();
+  if (A_Abluft == HIGH && Luftfeuchtigkeit >= 65 && (millis() - VergangeneAbluftZeit) > AbluftintervalAn) {
+    VergangeneAbluftZeit = millis();
     A_Abluft = LOW;
   }
-  if(Luftfeuchtigkeit <= 55 && millis() - VergangeneAbluftZeitAus > AbluftintervalAus) {
-    VergangeneNebelZeitAus = millis();
+  else if (A_Abluft == LOW && Luftfeuchtigkeit <= 55 && (millis() - VergangeneAbluftZeit) > AbluftintervalAus) {
+    VergangeneAbluftZeit = millis();
     A_Nebel = HIGH;
   }
 
