@@ -98,7 +98,7 @@ Adafruit_MQTT_Client mqtt(&client, AIO_SERVER, AIO_SERVERPORT, AIO_USERNAME, AIO
 /****************************** Feeds ***************************************/
 
 const char adafruit_feed[] PROGMEM = AIO_USERNAME "/feeds/testumgebung/";
-//const char Adafruit_Sub[] PROGMEM = AIO_USERNAME "/feeds/led";
+//const char Adafruit_Sub[] PROGMEM = AIO_USERNAME "/feeds/testumgebung.led";
 
 Adafruit_MQTT_Publish TemperaturStream = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/testumgebung.temperatur");
 Adafruit_MQTT_Publish LuftfeuchtigkeitStream = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/testumgebung.luftfeuchtigkeit");
@@ -266,10 +266,9 @@ void setup() {
     timeClient.begin();
     timeClient.setTimeOffset(7200);   //Uhrzeit von UTC auf Lokalzeit 7200 Sommerzeit
 
+    void connect();
     //Empfange Feed
     //mqtt.subscribe(&LampenStream);
-
-    void connect();
 
     Serial.println();
 
@@ -446,6 +445,23 @@ void Sende() {
     }
   }
     */
+
+  /*Adafruit_MQTT_Subscribe *subscription;
+  while ((subscription = mqtt.readSubscription(5000))) {
+    // Check if its the onoff button feed
+    if (subscription == &LampenStream) {
+      Serial.print(F("On-Off button: "));
+      Serial.println((char *)LampenStream.lastread);
+      
+      if (strcmp((char *)LampenStream.lastread, "ON") == 0) {
+        digitalWrite(AdresseAbluft, LOW); 
+      }
+      if (strcmp((char *)LampenStream.lastread, "OFF") == 0) {
+        digitalWrite(AdresseAbluft, HIGH); 
+      }
+    }
+  }
+  */
     // Publish data
   if (! TemperaturStream.publish(Temperatur))
     Serial.println(F("Failed to publish temperatur"));
@@ -497,16 +513,14 @@ void Sende() {
 //Verbindung zu IO
 void connect() {
 
-  /*OLED.clearDisplay();
+  OLED.clearDisplay();
   OLED.setTextWrap(false);
   OLED.setTextSize(1);
   //OLED.setTextColor(WHITE);
   OLED.setCursor(0,0);
   //OLED.println("verbinde... ");
   //OLED.display();
-  */
   Serial.print(F("Connecting to Adafruit IO... "));
-  OLED.clearDisplay();
   OLED.println("Verbinde zu Cloud");
   OLED.display();
 
