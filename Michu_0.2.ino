@@ -161,13 +161,13 @@ unsigned long VergangeneWindZeit = 0;
 unsigned long Windinterval = 90000;      //10min. an 600000
 
 unsigned long VergangeneNebelZeit = 0;
-unsigned long NebelintervalAn = 20000;       //5 sek. an
+unsigned long NebelintervalAn = 10000;       //5 sek. an
 unsigned long NebelintervalAus = 20000;    //5 min. warten 300000
 
 unsigned long VergangeneAbluftZeit = 0;
 //unsigned long VergangeneAbluftZeitAus = 0;
 unsigned long AbluftintervalAn = 10000;    //10 sek. an 10000
-unsigned long AbluftintervalAus = 10000;   //5 min. warten 300000
+unsigned long AbluftintervalAus = 20000;   //5 min. warten 300000
 
 int LichtZeit = 0;
 int LichtStart = 0;
@@ -596,7 +596,7 @@ void SerielleAusgabe() {
 void Programm() {
 
 /******************************Bodenfeuchte Ausgang (Wasserpumpe)***************************************/
-
+  
   BodenfeuchteBerechnet = ((Bodenfeuchte - Luftwert) / (-3.66)); //Berechneter Wert in %
   if (BodenfeuchteBerechnet > 100){   //max Wert 100
       BodenfeuchteBerechnet = 100;
@@ -651,27 +651,36 @@ void Programm() {
 
 /******************************Nebel***************************************/
 
-  if (A_Nebel == HIGH && Luftfeuchtigkeit <= 50 && (millis() - VergangeneNebelZeit) > NebelintervalAn) {
+  if (A_Nebel == HIGH && Luftfeuchtigkeit <= 50 && (millis() - VergangeneNebelZeit) > NebelintervalAn && (millis() - VergangeneNebelZeit) < NebelintervalAus) {
     VergangeneNebelZeit = millis();
     A_Nebel = LOW;
   }
+  else {
+    VergangeneAbluftZeit = millis();
+    A_Nebel = HIGH;
+  }
 
-  else if (A_Nebel == LOW && Luftfeuchtigkeit >= 60 && (millis() - VergangeneNebelZeit) > NebelintervalAus) {
+/*
+   if ((millis() - VergangeneNebelZeit) > NebelintervalAus) {
     VergangeneNebelZeit = millis();
     A_Nebel = HIGH;
   }
-
+*/
 /******************************Abluft***************************************/
 
-  if (A_Abluft == HIGH && Luftfeuchtigkeit >= 65 && (millis() - VergangeneAbluftZeit) > AbluftintervalAn) {
+  if (A_Abluft == HIGH && Luftfeuchtigkeit >= 65 && (millis() - VergangeneAbluftZeit) > AbluftintervalAn && (millis() - VergangeneAbluftZeit) < AbluftintervalAus) {
     VergangeneAbluftZeit = millis();
     A_Abluft = LOW;
   }
-  else if (A_Abluft == LOW && Luftfeuchtigkeit <= 55 && (millis() - VergangeneAbluftZeit) > AbluftintervalAus) {
+  else {
+    VergangeneAbluftZeit = millis();
+    A_Abluft = HIGH;
+  }
+  /*if (Luftfeuchtigkeit <= 55 && (millis() - VergangeneAbluftZeit) > AbluftintervalAus) {
     VergangeneAbluftZeit = millis();
     A_Nebel = HIGH;
   }
-
+*/
 /******************************Taster Grow***************************************/
 
   Taster = digitalRead(AdresseTaster);
@@ -707,7 +716,7 @@ void Display() {
     OLED.print(Temperatur);
     OLED.print(" ");
     OLED.print("D:");
-    OLED.print(Druck);
+    OLED.print(Bodenfeuchte);
     OLED.print(" ");
     OLED.print("L:");
     OLED.print(Luftfeuchtigkeit);
