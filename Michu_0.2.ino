@@ -167,9 +167,9 @@ unsigned long VergangeneNebelZeit   = 0;
 unsigned long NebelintervalAn       = 5000;       //5 sek. an
 unsigned long NebelintervalAus      = 20000;    //5 min. warten 300000
 
-unsigned long VergangeneAbluftZeit  = 0;
-unsigned long AbluftintervalAn      = 10000;    //10 sek. an 10000
-unsigned long AbluftintervalAus     = 20000;   //5 min. warten 300000
+unsigned long VergangeneWasserZeit  = 0;
+unsigned long WasserintervalAn      = 5000;    //10 sek. an 10000
+unsigned long WasserintervalAus     = 10000;   //5 min. warten 300000
 
 int LichtZeit = 0;
 int LichtStart = 0;
@@ -260,6 +260,8 @@ void setup() {
     //OLED.print("Wlan:   ");
     OLED.print(rssi);
     OLED.println(" dB");
+    OLED.print("IP: ");
+    OLED.println(WiFi.localIP());
     OLED.display();
 
     //server.begin();
@@ -360,22 +362,29 @@ void AdafruitIO() {
 /*
 void Empfange() {
 
-  Adafruit_MQTT_Subscribe *subscription;
-
-  if(! mqtt.ping(3)) {
+    if(! mqtt.ping(3)) {
     // reconnect to adafruit io
     if(! mqtt.connected())
       connect();
-  }
+    }
+
+  Adafruit_MQTT_Subscribe *subscription;
 
 
-  while (subscription = mqtt.readSubscription(10000)) {
+  while (subscription = mqtt.readSubscription(50)) {
 
     // we only care about the lamp events
     if (subscription == &LampenStream) {
 
       Serial.print("Empfange: ");
       Serial.println((char *)LampenStream.lastread);
+
+      if (strcmp((char *)LampenStream.lastread, "ON") == 0) {
+        Grow = HIGH;
+      }
+      if (strcmp((char *)LampenStream.lastread, "OFF") == 0) {
+        Grow = LOW;
+      }
     }
   }
 }
@@ -383,11 +392,7 @@ void Empfange() {
 void Zeit() {
 
   timeClient.update();
-  ntpStunden = timeClient.getHours();
-
-  if(! mqtt.ping()) {
-    mqtt.disconnect();
-  } 
+  ntpStunden = timeClient.getHours(); 
 }
 
 void Lesen() {
@@ -419,6 +424,7 @@ void Sende() {
 
   if(millis() - VergangeneSendeZeit > Sendeinterval) {
     VergangeneSendeZeit = millis(); // aktuelle Zeit abspeichern
+    //Empfange();
 
     //if(! mqtt.ping(3)) {
     // reconnect to adafruit io
@@ -605,38 +611,19 @@ void SerielleAusgabe() {
 
 void Programm() {
 
-/******************************Bodenfeuchte Ausgang (Wasserpumpe)***************************************/
-  
-  BodenfeuchteBerechnet = ((Bodenfeuchte - Luftwert) / (-3.66)); //Berechneter Wert in %
-  if (BodenfeuchteBerechnet > 100){   //max Wert 100
-      BodenfeuchteBerechnet = 100;
-  }
-  if (BodenfeuchteBerechnet <= 0) {   //min Wert 0
-      BodenfeuchteBerechnet = 0;
-    }
-
-  if (BodenfeuchteBerechnet >= 0 && BodenfeuchteBerechnet <= 60) { //
-    A_Wasser = LOW;
-    WasserPrint = " AN ";
-  }
-  else {
-    A_Wasser = HIGH;
-    WasserPrint = " AUS ";
-  }
-
 /******************************Licht***************************************/
 
   if (Grow == HIGH) {         //Wenn Pflanze im Grow Stadium dann 10h Licht
     LichtZeit = 18;
     LichtStart = 5;
     PflanzenPhase = "Grow";
-    PflanzenPhase_char = "Grow Phase";
+    //PflanzenPhase_char = "Grow Phase";
   }
   else {
     LichtZeit = 6;     //Wenn Pflanze im Ernte Stadium dann 8h Licht
     LichtStart = 10;
     PflanzenPhase = "Bloom";
-    PflanzenPhase_char = "Grow Phase";
+    //PflanzenPhase_char = "Bloom Phase";
   }
 
   if (ntpStunden >= LichtStart) {
@@ -653,6 +640,33 @@ void Programm() {
   Lichtfehler = false;
   Lichtfehler_char = "Lichtüberwachung OK";
   }
+
+/******************************Bodenfeuchte Ausgang (Wasserpumpe)***************************************/
+  
+  BodenfeuchteBerechnet = ((Bodenfeuchte - Luftwert) / (-3.66)); //Berechneter Wert in %
+  if (BodenfeuchteBerechnet > 100){   //max Wert 100
+      BodenfeuchteBerechnet = 100;
+  }
+  if (BodenfeuchteBerechnet <= 0) {   //min Wert 0
+      BodenfeuchteBerechnet = 0;
+    }
+
+  if ((millis() - VergangeneWasserZeit) > WasserintervalAus) {
+    if (BodenfeuchteBerechnet >= 0 && BodenfeuchteBerechnet <= 60) { //
+      A_Wasser = LOW;
+      WasserPrint = " AN ";
+    }
+    else {
+      A_Wasser = HIGH;
+      WasserPrint = " AUS ";
+    if ((millis() - VergangeneNebelZeit) > NebelintervalAus + NebelintervalAn) { 
+      A_Wasser = HIGH;
+      WasserPrint = " AUS ";
+      VergangeneWasserZeit = millis();
+      }
+    }
+  }
+  
 /******************************Windsimulation***************************************/
 
   if (millis() - VergangeneWindZeit > WindintervalAus) {
@@ -665,7 +679,7 @@ void Programm() {
     }
   }
 
-/******************************Nebel***************************************/
+/******************************Nebel/Abluft***************************************/
 
   if ((millis() - VergangeneNebelZeit) > NebelintervalAus) {
      if (Luftfeuchtigkeit <= 50) {
@@ -687,21 +701,6 @@ void Programm() {
     }
   }
 
-/******************************Abluft***************************************/
-/*
-  if ((millis() - VergangeneAbluftZeit) > AbluftintervalAus) {
-    if (Luftfeuchtigkeit >= 65) {
-      A_Abluft = LOW;
-    }
-    else {
-      A_Abluft = HIGH;
-    }
-    if ((millis() - VergangeneAbluftZeit) > AbluftintervalAus + AbluftintervalAn) {
-      A_Abluft = LOW;
-      VergangeneAbluftZeit = millis();
-    }
-  }
-  */
 /******************************Taster Grow***************************************/
 
   Taster = digitalRead(AdresseTaster);
