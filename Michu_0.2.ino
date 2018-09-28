@@ -96,7 +96,7 @@ const char MQTT_PASSWORD[] PROGMEM  = AIO_KEY;
 // Setup the MQTT client class by passing in the WiFi client and MQTT server and login details.
 Adafruit_MQTT_Client mqtt(&client, AIO_SERVER, AIO_SERVERPORT, AIO_USERNAME, AIO_KEY);
 
-/****************************** Feeds ***************************************/
+/******************************Feeds***************************************/
 
 const char adafruit_feed[] PROGMEM = AIO_USERNAME "/feeds/testumgebung/";
 //const char Adafruit_Sub[] PROGMEM = AIO_USERNAME "/feeds/testumgebung.led";
@@ -110,7 +110,7 @@ Adafruit_MQTT_Publish GrowStream = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/f
 Adafruit_MQTT_Publish BodenStream = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/testumgebung.boden");
 //Adafruit_MQTT_Subscribe LampenStream = Adafruit_MQTT_Subscribe(&mqtt, Adafruit_Sub);
 
-/****************************** Eingänge/Ausgänge***************************************/
+/******************************Eingänge/Ausgänge***************************************/
 
 const int AdresseI2C1 = D1;
 const int AdresseI2C2 = D2;
@@ -132,15 +132,16 @@ bool A_Licht = HIGH;
 bool A_Abluft = HIGH;
 bool A_Nebel = HIGH;
 
-bool Grow = HIGH;
-bool TasterMerker = LOW;
-bool Taster = LOW;
+/******************************Merker***************************************/
 
+bool Grow = HIGH;
+bool TasterMerker = HIGH;
+bool Taster = LOW;
 bool Lichtfehler = false;
 
-/****************************** Variablen***************************************/
+/******************************Variablen***************************************/
 
-int Temperatur = 0;
+float Temperatur = 0;
 int Luftfeuchtigkeit = 0;
 int Druck = 0;
 int Hoehe = 0;
@@ -201,10 +202,11 @@ void setup() {
     OLED.setTextColor(WHITE);
     OLED.setCursor(0,0);
 
-    OLED.println("Stefftec");
+    OLED.println("    Stefftec");
     OLED.display();
     delay(2000);
 
+    OLED.println();
     OLED.println("Pflanzensteuerung 1.0");
     OLED.display();
 
@@ -611,19 +613,30 @@ void SerielleAusgabe() {
 
 void Programm() {
 
+/******************************Taster Grow***************************************/
+
+  Taster = digitalRead(AdresseTaster);
+  if (Taster == HIGH && TasterMerker == LOW) {
+    if (Grow == HIGH)
+      Grow = LOW;
+    else
+      Grow = HIGH;
+  }
+  TasterMerker = Taster;
+
 /******************************Licht***************************************/
 
   if (Grow == HIGH) {         //Wenn Pflanze im Grow Stadium dann 10h Licht
     LichtZeit = 18;
     LichtStart = 5;
     PflanzenPhase = "Grow";
-    //PflanzenPhase_char = "Grow Phase";
+    PflanzenPhase_char = "Grow Phase";
   }
   else {
     LichtZeit = 6;     //Wenn Pflanze im Ernte Stadium dann 8h Licht
     LichtStart = 10;
     PflanzenPhase = "Bloom";
-    //PflanzenPhase_char = "Bloom Phase";
+    PflanzenPhase_char = "Bloom Phase";
   }
 
   if (ntpStunden >= LichtStart) {
@@ -700,18 +713,6 @@ void Programm() {
     VergangeneNebelZeit = millis();
     }
   }
-
-/******************************Taster Grow***************************************/
-
-  Taster = digitalRead(AdresseTaster);
-  if (Taster == HIGH && TasterMerker == LOW) {
-    if (Grow == HIGH)
-      Grow = LOW;
-    else
-      Grow = HIGH;
-  }
-  TasterMerker = Taster;
-
 }
 
 void Ausgaenge() {
@@ -733,7 +734,7 @@ void Display() {
     OLED.setCursor(0,0);
 
     OLED.print("T:");
-    OLED.print(Temperatur);
+    OLED.print(Temperatur,1);
     OLED.print(" ");
     OLED.print("D:");
     OLED.print(Bodenfeuchte);
