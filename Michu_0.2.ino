@@ -111,21 +111,20 @@ Adafruit_MQTT_Publish BodenStream = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/
 //Adafruit_MQTT_Subscribe LampenStream = Adafruit_MQTT_Subscribe(&mqtt, Adafruit_Sub);
 
 /******************************Eingänge/Ausgänge***************************************/
-
+//I2C
 const int AdresseI2C1 = D1;
 const int AdresseI2C2 = D2;
-
+//Analogeingang
 const int AnalogAdresse = A0;
+//Digtale_Eingänge
+const int AdresseTaster = D3;
+//Digitale_Ausgänge
 const int AdresseWasser = D0;
 const int AdresseLicht = D5;
 const int AdresseWind = D6;
 const int AdresseAbluft = D7;
 const int AdresseNebel = D8;
-
-const int AdresseTaster = D3;
-
-//Ausgänge; HIGH = AUS
-
+//Ausgänge_auf_AUS_defienieren; HIGH = AUS
 bool A_Wasser = HIGH;
 bool A_Wind = HIGH;
 bool A_Licht = HIGH;
@@ -191,7 +190,7 @@ void setup() {
 
     Wire.begin(AdresseI2C1, AdresseI2C2); //Benutzte GPIOs I2C für I2C
     Wire.setClock(100000);
-    
+
     bool status;
 
     OLED.begin();
@@ -254,7 +253,7 @@ void setup() {
       OLED.print("Wlan:   OK ");
       OLED.display();
     }
-    
+
     Serial.print("Wlan ");
     long rssi = WiFi.RSSI();
     Serial.print("RSSI:");
@@ -394,7 +393,7 @@ void Empfange() {
 void Zeit() {
 
   timeClient.update();
-  ntpStunden = timeClient.getHours(); 
+  ntpStunden = timeClient.getHours();
 }
 
 void Lesen() {
@@ -467,12 +466,12 @@ void Sende() {
     if (subscription == &LampenStream) {
       Serial.print(F("On-Off button: "));
       Serial.println((char *)LampenStream.lastread);
-      
+
       if (strcmp((char *)LampenStream.lastread, "ON") == 0) {
-        digitalWrite(AdresseAbluft, LOW); 
+        digitalWrite(AdresseAbluft, LOW);
       }
       if (strcmp((char *)LampenStream.lastread, "OFF") == 0) {
-        digitalWrite(AdresseAbluft, HIGH); 
+        digitalWrite(AdresseAbluft, HIGH);
       }
     }
   }
@@ -512,14 +511,14 @@ void Sende() {
     Serial.print(timeClient.getFullFormattedTime());
     Serial.print(F(" GrowStatus: "));
     Serial.println(PflanzenPhase_char);
-    
+
   if (! BodenStream.publish(BodenfeuchteBerechnet))
     Serial.println(F(" Failed to publish Bodenfeuchte"));
   else
     Serial.print(timeClient.getFullFormattedTime());
     Serial.print(F(" Bodenfeuchte: "));
     Serial.println(BodenfeuchteBerechnet);
-    
+
   if (! GrowStream.publish(Lichtfehler_char))
     Serial.println(F(" Failed to publish Bodenfeuchte"));
   else
@@ -654,16 +653,16 @@ void Programm() {
   Lichtfehler_char = "Lichtüberwachung OK";
   }
 
-/******************************Bodenfeuchte Ausgang (Wasserpumpe)***************************************/
-  
+/******************************Bodenfeuchte & Ausgang_Wasserpumpe***************************************/
+
   BodenfeuchteBerechnet = ((Bodenfeuchte - Luftwert) / (-3.66)); //Berechneter Wert in %
-  if (BodenfeuchteBerechnet > 100){   //max Wert 100
-      BodenfeuchteBerechnet = 100;
-  }
-  if (BodenfeuchteBerechnet <= 0) {   //min Wert 0
+  if (BodenfeuchteBerechnet > 100){   //max Wert  100
+      BodenfeuchteBerechnet = 100;//               ¦
+  }                               //               ¦
+  if (BodenfeuchteBerechnet <= 0) {   //min Wert   0
       BodenfeuchteBerechnet = 0;
     }
-
+    //Wasserpumpe Einschaltintervall; Abändern auf 1x/Tag ?? 
   if ((millis() - VergangeneWasserZeit) > WasserintervalAus) {
     if (BodenfeuchteBerechnet >= 0 && BodenfeuchteBerechnet <= 60) { //
       A_Wasser = LOW;
@@ -672,14 +671,14 @@ void Programm() {
     else {
       A_Wasser = HIGH;
       WasserPrint = " AUS ";
-    if ((millis() - VergangeneNebelZeit) > NebelintervalAus + NebelintervalAn) { 
+    if ((millis() - VergangeneNebelZeit) > NebelintervalAus + NebelintervalAn) {
       A_Wasser = HIGH;
       WasserPrint = " AUS ";
       VergangeneWasserZeit = millis();
       }
     }
   }
-  
+
 /******************************Windsimulation***************************************/
 
   if (millis() - VergangeneWindZeit > WindintervalAus) {
@@ -696,8 +695,8 @@ void Programm() {
 
   if ((millis() - VergangeneNebelZeit) > NebelintervalAus) {
      if (Luftfeuchtigkeit <= 50) {
-        A_Nebel = LOW;      
-     }        
+        A_Nebel = LOW;
+     }
      else {
         A_Nebel = HIGH;
      }
@@ -707,7 +706,7 @@ void Programm() {
     else {
       A_Abluft = HIGH;
     }
-    if ((millis() - VergangeneNebelZeit) > NebelintervalAus + NebelintervalAn) { 
+    if ((millis() - VergangeneNebelZeit) > NebelintervalAus + NebelintervalAn) {
     A_Nebel = HIGH;
     A_Abluft = HIGH;
     VergangeneNebelZeit = millis();
