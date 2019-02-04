@@ -398,20 +398,16 @@ void Zeit() {
 
 void Lesen() {
 
-
+    //verknüpft Eingänge mit Variablen
     Temperatur = (bme.readTemperature());
-
     Druck = (bme.readPressure() / 100.0F);
-
     Hoehe = (bme.readAltitude(SEALEVELPRESSURE_HPA));
-
     Luftfeuchtigkeit = (bme.readHumidity());
-
     helligkeit = lightMeter.readLightLevel();
-
     Bodenfeuchte = analogRead(AnalogAdresse);
+    //Wert aus Kalibrierung: -3.66
     BodenfeuchteBerechnet = ((Bodenfeuchte - Luftwert) / (-3.66)); //Berechneter Wert in %
-    if (BodenfeuchteBerechnet > 100){
+    if (BodenfeuchteBerechnet > 100){ //min & max Werte Festlegen
       BodenfeuchteBerechnet = 100;
     }
     if (BodenfeuchteBerechnet <= 0){
@@ -423,7 +419,7 @@ void Lesen() {
 
 void Sende() {
 
-  if(millis() - VergangeneSendeZeit > Sendeinterval) {
+  if(millis() - VergangeneSendeZeit > Sendeinterval) { //Intervall
     VergangeneSendeZeit = millis(); // aktuelle Zeit abspeichern
     //Empfange();
 
@@ -662,7 +658,7 @@ void Programm() {
   if (BodenfeuchteBerechnet <= 0) {   //min Wert   0
       BodenfeuchteBerechnet = 0;
     }
-    //Wasserpumpe Einschaltintervall; Abändern auf 1x/Tag ?? 
+    //Wasserpumpe Einschaltintervall; Abändern auf 1x/Tag ??
   if ((millis() - VergangeneWasserZeit) > WasserintervalAus) {
     if (BodenfeuchteBerechnet >= 0 && BodenfeuchteBerechnet <= 60) { //
       A_Wasser = LOW;
