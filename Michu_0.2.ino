@@ -168,8 +168,8 @@ unsigned long NebelintervalAn       = 5000;       //5 sek. an
 unsigned long NebelintervalAus      = 20000;    //5 min. warten 300000
 
 unsigned long VergangeneWasserZeit  = 0;
-unsigned long WasserintervalAn      = 5000;    //10 sek. an 10000
-unsigned long WasserintervalAus     = 10000;   //5 min. warten 300000
+unsigned long WasserintervalAn      = 60000;      //schalte die Pumpe für 1 min an
+unsigned long WasserintervalAus     = 86400000;   //jeden Tag
 
 int LichtZeit = 0;
 int LichtStart = 0;
